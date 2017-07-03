@@ -2,13 +2,14 @@
 #include <WS2tcpip.h>
 #include <iostream>
 #pragma comment(lib,"ws2_32.lib")
+
 void main()
 {
 	//定义相应的数据
 	WSADATA wsaData;
 	SOCKET sClient;
-	int iPort = 5050;
-	int iLen;
+	int iPort = 5050;//对应的服务端的端口
+	int iLen, iSend;
 	char buf[1024];
 	struct sockaddr_in ser;
 
@@ -20,11 +21,13 @@ void main()
 		return;
 	}
 
+	//char addr[20] = { '\0' };
+	//std::cin >> addr;//输入服务端 IP 地址
+	char addr[20] = "192.168.1.119";
+
 	//创建Socket
 	ser.sin_family = AF_INET;
 	ser.sin_port = htons(iPort);
-	char addr[20] = { '\0' };
-	std::cin >> addr;
 	inet_pton(AF_INET, addr, (void*)&ser.sin_addr.s_addr);
 	sClient = socket(AF_INET, SOCK_STREAM, 0);
 	if (sClient == INVALID_SOCKET) {
@@ -40,6 +43,7 @@ void main()
 		return;
 	}
 	else {
+		//接收服务端发送的数据
 		iLen = recv(sClient, buf, sizeof(buf), 0);
 		if (iLen == 0) {
 			system("pause");
@@ -53,7 +57,29 @@ void main()
 		std::cout << "recv() data from server:" << buf << std::endl;
 	}
 
+	int index = 0;
+	while (true) {
+		//std::cout << ">>";
+		//std::cin >> buf;
+		_itoa_s(index, buf, 10);
+		++index;
+
+		iSend = send(sClient, buf, sizeof(buf), 0);
+		if (iSend == SOCKET_ERROR) {
+			std::cout << "send() Failed\n";
+		}
+		else if (iSend == 0) {
+			std::cout << "send() Zero\n";
+		}
+		else {
+			std::cout << "Send byte:" << iSend << std::endl;
+			std::cout << "----------------------------------\n";
+		}
+	}
+
+	//关闭连接并退出
 	closesocket(sClient);
+	//关闭 Winsock
 	WSACleanup();
 	
 	system("pause");

@@ -1,18 +1,25 @@
 #include <Winsock2.h>
 #include <Ws2tcpip.h>
 #include <iostream>
+#include <thread>
+#include <vector>
 #pragma comment(lib,"ws2_32.lib")
-char* GetLocalAddress();
+
+void server(SOCKET s);
+
 void main()
 {
 	//定义相关的数据
-	int iPort = 5050;
-	WSADATA wsaData;
-	SOCKET sListen, sAccept;
+	int iPort = 5050;//定义其端口
+	WSADATA wsaData;//Winsock 的启动参数
+	SOCKET sListen, sAccept;//套接口关键字,分别用于监听和接收连接
 	int iLen;
 	int iSend;
 	char buf[] = "I am a server";
-	struct sockaddr_in ser, cli;
+	struct sockaddr_in ser, cli;//网络地址
+	std::thread* t;
+	std::vector<std::thread*> tManage;
+
 
 	std::cout << "----------------------------\n";
 	std::cout << "Server waitting\n";
@@ -40,89 +47,95 @@ void main()
 		return;
 	}
 
-	//显示服务端地址
-	struct sockaddr FAR* name = NULL;
-	int FAR* len = NULL;
-	if (getsockname(sListen, name, len) == 0) {
-		char clibuf[20] = { '\0' };
-		inet_ntop(AF_INET, (void*)&ser.sin_addr.s_addr, clibuf, 16);
-		std::cout << "SERVER IP:" << clibuf << ":" << ntohs(ser.sin_port) << std::endl;
-	}
-	else {
-		std::cout << "Get the server IP failed.\n";
-		char clibuf[20] = { '\0' };
-		inet_ntop(AF_INET, (void*)&ser.sin_addr.s_addr, clibuf, 16);
-		std::cout << "SERVER IP:" << clibuf << ":" << ntohs(ser.sin_port) << std::endl;
-		std::cout << GetLocalAddress();
-	}
-
 	//监听
 	if (listen(sListen, 5) == SOCKET_ERROR) {
 		std::cout << "listen() Failed\n";
 		return;
 	}
 
+	iLen = sizeof(cli);//获取客户端网络地址的长度
+
 	//接受连接和发送欢迎信息
-	iLen = sizeof(cli);
+	//用循环使程序一直运行
 	while (true) {
+		//接收连接
 		sAccept = accept(sListen, (struct sockaddr*)&cli, &iLen);
 		if (sAccept == INVALID_SOCKET) {
 			std::cout << "accept() Failed\n";
 			break;
 		}
 
-		char clibuf[20] = { '\0' };
-		inet_ntop(AF_INET, (void*)&cli.sin_addr, clibuf, 16);
-		std::cout << "Accept client IP:" << clibuf << ":" << ntohs(cli.sin_port) << std::endl;
+		t = new std::thread(server, sAccept);
+		tManage.push_back(t);
+		t->detach();
 
-		iSend = send(sAccept, buf, sizeof(buf), 0);
-		if (iSend == SOCKET_ERROR) {
-			std::cout << "send() Failed\n";
-			break;
-		}
-		else if (iSend == 0) {
-			break;
-		}
-		else {
-			std::cout << "Send byte:" << iSend << std::endl;
-			std::cout << "----------------------------------\n";
-		}
-		closesocket(sAccept);
+		////显示客户端的 IP 信息
+		//char clibuf[20] = { '\0' };
+		//inet_ntop(AF_INET, (void*)&cli.sin_addr, clibuf, 16);
+		//std::cout << "Accept client IP:" << clibuf << ":" << ntohs(cli.sin_port) << std::endl;
+
+		////发送信息给客户端
+		//iSend = send(sAccept, buf, sizeof(buf), 0);
+		//if (iSend == SOCKET_ERROR) {
+		//	std::cout << "send() Failed\n";
+		//	break;
+		//}
+		//else if (iSend == 0) {
+		//	break;
+		//}
+		//else {
+		//	std::cout << "Send byte:" << iSend << std::endl;
+		//	std::cout << "----------------------------------\n";
+		//}
+
+		////关闭连接
+		//closesocket(sAccept);
 	}
+
+	for (int i = 0; i < tManage.size(); i++) {
+		delete(tManage[i]);
+	}
+
+	//关闭监听
 	closesocket(sListen);
+	//关闭 Winsock
 	WSACleanup();
 }
 
-//获取本地 IP 地址
-char* GetLocalAddress()
-{
-	struct in_addr *pinAddr;
-	LPHOSTENT	lpHostEnt;
-	int			nRet;
-	int			nLen;
-	char        szLocalAddr[80];
-	memset(szLocalAddr, 0, sizeof(szLocalAddr));
-	// Get our local name
-	nRet = gethostname(szLocalAddr, sizeof(szLocalAddr));
-	if (nRet == SOCKET_ERROR)
-	{
-		return NULL;
+void server(SOCKET s) {
+	SOCKET socket = s;
+	struct sockaddr_in ser, cli;//网络地址
+	int iSend, iRecv;
+	char buf[1024] = "I am a server";
+
+	//显示客户端的 IP 信息
+	char clibuf[20] = { '\0' };
+	inet_ntop(AF_INET, (void*)&cli.sin_addr, clibuf, 16);
+	std::cout << "Accept client IP:" << clibuf << ":" << ntohs(cli.sin_port) << std::endl;
+
+	//发送信息给客户端
+	iSend = send(socket, buf, sizeof(buf), 0);
+	if (iSend == SOCKET_ERROR) {
+		std::cout << "send() Failed\n";
 	}
-	// "Lookup" the local name
-	lpHostEnt = gethostbyname(szLocalAddr);
-	lpHostEnt = getaddrinfo(NULL, NULL, szLocalAddr, lpHostEnt);
-	lpHostEnt = WSAAsyncGetHostByName(szLocalAddr);
-	if (NULL == lpHostEnt)
-	{
-		return NULL;
+	else if (iSend == 0) {
+		std::cout << "send() Zero\n";
 	}
-	// Format first address in the list
-	pinAddr = ((LPIN_ADDR)lpHostEnt->h_addr);
-	nLen = strlen(inet_ntoa(*pinAddr));
-	if ((DWORD)nLen > sizeof(szLocalAddr))
-	{
-		WSASetLastError(WSAEINVAL);
-		return NULL;
+	else {
+		std::cout << "Send byte:" << iSend << std::endl;
+		std::cout << "----------------------------------\n";
 	}
-	return inet_ntoa(*pinAddr);
+
+	while (true) {
+		iRecv = recv(socket, buf, sizeof(buf), 0);
+		if (iRecv == 0) {
+			//std::cout << "recv() Zero\n";
+		}
+		else if (iRecv == SOCKET_ERROR) {
+			std::cout << "recv() Failed\n";
+		}
+		else {
+			std::cout << "recv() data from server:" << buf << std::endl;
+		}
+	}
 }
