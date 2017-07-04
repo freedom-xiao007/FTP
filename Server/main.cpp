@@ -5,6 +5,9 @@
 #include <vector>
 #pragma comment(lib,"ws2_32.lib")
 
+#include "Server.h"
+
+//多线程函数，创建的多线程运行此函数
 void server(SOCKET s);
 
 void main()
@@ -17,8 +20,11 @@ void main()
 	int iSend;
 	char buf[] = "I am a server";
 	struct sockaddr_in ser, cli;//网络地址
+	//定义多线程指针，用于创建线程
 	std::thread* t;
+	//用于线程的管理，保存创建的多线程指针，程序结束时释放占用的内存
 	std::vector<std::thread*> tManage;
+	Server* server = NULL;
 
 
 	std::cout << "----------------------------\n";
@@ -65,33 +71,17 @@ void main()
 			break;
 		}
 
-		t = new std::thread(server, sAccept);
+		//创建新的线程，并加入容器中，并将线程后台运行
+		//t = new std::thread(server, sAccept);
+		//tManage.push_back(t);
+		//t->detach();
+		server = new Server(sAccept);
+		t = new std::thread(&Server::running, server);
 		tManage.push_back(t);
 		t->detach();
-
-		////显示客户端的 IP 信息
-		//char clibuf[20] = { '\0' };
-		//inet_ntop(AF_INET, (void*)&cli.sin_addr, clibuf, 16);
-		//std::cout << "Accept client IP:" << clibuf << ":" << ntohs(cli.sin_port) << std::endl;
-
-		////发送信息给客户端
-		//iSend = send(sAccept, buf, sizeof(buf), 0);
-		//if (iSend == SOCKET_ERROR) {
-		//	std::cout << "send() Failed\n";
-		//	break;
-		//}
-		//else if (iSend == 0) {
-		//	break;
-		//}
-		//else {
-		//	std::cout << "Send byte:" << iSend << std::endl;
-		//	std::cout << "----------------------------------\n";
-		//}
-
-		////关闭连接
-		//closesocket(sAccept);
 	}
 
+	//释放指针占用的内存
 	for (int i = 0; i < tManage.size(); i++) {
 		delete(tManage[i]);
 	}
@@ -102,6 +92,7 @@ void main()
 	WSACleanup();
 }
 
+//多线程函数，创建的多线程运行此函数
 void server(SOCKET s) {
 	SOCKET socket = s;
 	struct sockaddr_in ser, cli;//网络地址
@@ -126,6 +117,7 @@ void server(SOCKET s) {
 		std::cout << "----------------------------------\n";
 	}
 
+	//使用循环不断接受客户端发送来的信息并显示
 	while (true) {
 		iRecv = recv(socket, buf, sizeof(buf), 0);
 		if (iRecv == 0) {
