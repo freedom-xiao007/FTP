@@ -2,12 +2,15 @@
 #include "Tool.h"
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 
 Server::Server(SOCKET s)
 	:server(s)
 {
-	maxLen = 1024;
+	maxSize = 1024;
+	storePath = ".\\temp\\";
+	//buf = new char[maxSize];
 }
 
 
@@ -17,10 +20,10 @@ Server::~Server()
 
 bool Server::welcome()
 {
-	char welcome[1024] = "Welcome, my friend\n";
+	char *welcome = "Welcome, my friend\n";
 
 	//发送信息给客户端
-	int iSend = send(server, welcome, sizeof(welcome), 0);
+	int iSend = send(server, welcome, 1024, 0);
 	if (iSend == SOCKET_ERROR) {
 		std::cout << "send() Failed\n";
 		return false;
@@ -34,7 +37,7 @@ void Server::running()
 	welcome();
 
 	while (true) {
-		if (recv(server, buf, maxLen, 0) == 0) {
+		if (recv(server, buf, maxSize, 0) == 0) {
 			std::cout << "recv() Faied!\n";
 		}
 
@@ -65,7 +68,7 @@ void Server::running()
 int Server::commandParse(char* instruck, std::string &paramter)
 {
 	std::string string(buf);
-	std::cout << string;
+	std::cout << string << std::endl;
 	std::vector<std::string> command;
 	Tool::splitString(string, command, std::string(" "));
 	//std::cout << command[0] << " " << command[1] << std::endl;
@@ -89,6 +92,31 @@ int Server::commandParse(char* instruck, std::string &paramter)
 
 bool Server::receiveFile(std::string filename)
 {
+	std::string filePath = storePath + filename;
+	std::ofstream storeFile(filePath);
+	if (!storeFile) {
+		std::cout << "Create file failed\n";
+	}
+
+	int len = 1;
+	int recvCount = 0;
+	while (true) {
+		memset(buf, 0, maxSize);
+		len = recv(server, buf, 1024, 0);
+		storeFile.write(buf, sizeof(buf));
+		if (len == SOCKET_ERROR) {
+			std::cout << "Receive occur error\n";
+		}
+		if (strlen(buf) == 0) {
+			break;
+		}
+		recvCount += strlen(buf);
+		std::cout << "Receive " << recvCount << " bytes\n";
+	}
+
+	storeFile.close();
+	std::cout << "Write file successful\n";
+
 	return false;
 }
 

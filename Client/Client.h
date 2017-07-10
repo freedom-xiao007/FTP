@@ -9,13 +9,13 @@ public:
 	~Client();
 
 	void running();
-	bool connectServer(const sockaddr_in &addr);
-	bool uploadFile(std::string file);
+	bool uploadFile(std::string filePath);
 	bool downloadFile(std::string file);
 	int commandParse(char* instruck, std::string &paramter);
 
 private:
 	SOCKET client;
+	int maxSize;
 	char buf[1024];
 	//定义相应的数据
 	WSADATA wsaData;

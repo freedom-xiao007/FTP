@@ -29,3 +29,17 @@ void Tool::splitString(const std::string & input, std::vector<std::string>& outp
 	if (pos1 != input.length())
 		output.push_back(input.substr(pos1));
 }
+
+bool Tool::filePathConvert(std::string & filePath)
+{
+	std::vector<std::string> convert;
+	splitString(filePath, convert, std::string("\\"));
+	filePath = convert[0];
+	for (int i = 1; i < convert.size(); i++) {
+		filePath += "\\\\";
+		//filePath += "/";
+		filePath += convert[i];
+	}
+
+	return true;
+}

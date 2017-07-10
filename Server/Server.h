@@ -22,7 +22,8 @@ public:
 
 private:
 	SOCKET server;
-	int maxLen;
+	int maxSize;
 	char buf[1024];
+	std::string storePath;
 };
 
