@@ -71,7 +71,6 @@ int Server::commandParse(char* instruck, std::string &paramter)
 	std::cout << string << std::endl;
 	std::vector<std::string> command;
 	Tool::splitString(string, command, std::string(" "));
-	//std::cout << command[0] << " " << command[1] << std::endl;
 
 	if (command.size() != 2) {
 		paramter = "";
@@ -92,28 +91,43 @@ int Server::commandParse(char* instruck, std::string &paramter)
 
 bool Server::receiveFile(std::string filename)
 {
+	//创建与上次文件名相同的文件
 	std::string filePath = storePath + filename;
-	std::ofstream storeFile(filePath);
+	std::ofstream storeFile(filePath, std::ios_base::binary);
 	if (!storeFile) {
 		std::cout << "Create file failed\n";
 	}
 
+	//先接收文件大小信息
+	memset(buf, 0, maxSize);
+	recv(server, buf, 1024, 0);
+	int fileSize = atoi(buf);
+	std::cout << "File's size is:" << fileSize << std::endl;
+
 	int len = 1;
 	int recvCount = 0;
+	//统计文件传输剩下的大小
+	int remain = fileSize;
 	while (true) {
 		memset(buf, 0, maxSize);
 		len = recv(server, buf, 1024, 0);
-		storeFile.write(buf, sizeof(buf));
+		storeFile.write(buf, 1024);
 		if (len == SOCKET_ERROR) {
 			std::cout << "Receive occur error\n";
 		}
-		if (strlen(buf) == 0) {
+
+		//如果剩下的小于等于0，说明文件传输完毕，退出循环
+		remain -= 1024;
+		if(remain <= 0) {
+		//if (strlen(buf) == 0) {
 			break;
 		}
+
 		recvCount += strlen(buf);
 		std::cout << "Receive " << recvCount << " bytes\n";
 	}
 
+	//关闭并保存文件
 	storeFile.close();
 	std::cout << "Write file successful\n";
 

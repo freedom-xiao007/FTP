@@ -109,10 +109,7 @@ bool Client::uploadFile(std::string filePath)
 	std::string absolutePath = workPath;
 	absolutePath += "\\";
 	absolutePath += filePath;
-	//absolutePath += "\n";
-	//std::cout << absolutePath << std::endl;
-	std::ifstream file(absolutePath.c_str());
-	//file.open(absolutePath.c_str(), std::ios::in);
+	std::ifstream file(absolutePath.c_str(), std::ios_base::binary);
 
 	if (!file) {
 		std::cout << "file open failed.\n";
@@ -121,57 +118,36 @@ bool Client::uploadFile(std::string filePath)
 	else {
 		std::cout << "open successful\n";
 	}
-	//FILE *file;
-	//fopen_s(&file, absolutePath.c_str(), "r");
-	//if (file == NULL) {
-	//	std::cout << "Open file failed\n";
-	//}
 
 	//获取文件大小
 	long fileBegin = file.tellg();
-	std::cout << "File begin is " << fileBegin << " bytes\n";
 	file.seekg(0, std::ios_base::end);
 	long fileEnd = file.tellg();
 	int fileSize = fileEnd - fileBegin;
-	std::cout << "File end is " << fileEnd << " bytes\n";
 	std::cout << "File size is " << fileEnd-fileBegin << " bytes" << std::endl;
-	//fseek(file, 0, SEEK_END);
-	//long fileSize = ftell(file);
-	//fseek(file, 0, SEEK_SET);
-	//std::cout << "File size is " << fileSize << " bytes" << std::endl;
+	//将文件大小发送给服务端
+	_itoa_s(fileSize, buf, 10);
+	send(client, buf, 1024, 0);
 
 	//读取文件内容
 	std::cout << "开始读取文件内容" << std::endl;
 	file.seekg(0, std::ios_base::beg);
 	int sendCount = 0;
 	while(!file.eof()) {
-		memset(buf, 0, sizeof(char)*1024);
+		memset(buf, 0, 1024);
 		file.read(buf, 1024);
-		std::cout << buf << std::endl;
-		sendCount += 1024;
 
 		int len = send(client, buf, maxSize, 0);
 		if (len == SOCKET_ERROR) {
 			std::cout << "Sending occur error\n";
 		}
 
+		sendCount += 1024;
 		std::cout << "Send " << sendCount << "/" << fileSize << " bytes\n";
-		std::cout << "Sending---------------\n";
 	}
-	memset(buf, 0, sizeof(buf));
-	std::cout << send(client, buf, maxSize, 0) << std::endl;
-	//memset(buf, 0, sizeof(buf));
-	//int blockSize = 0;
-	//int sendCount = 0;
-	//while ((blockSize = fread(buf, sizeof(char), maxSize, file)) > 0) {
-	//	sendCount += blockSize;
-	//	std::cout << "Send " << sendCount << "/" << fileSize << " bytes\n";
-	//	memset(buf, 0, sizeof(buf));
-	//}
 
 	//关闭文件
 	file.close();
-	//fclose(file);
 	std::cout << "Readed file succesful\n";
 
 	return false;
